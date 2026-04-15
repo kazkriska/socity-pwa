@@ -7,11 +7,16 @@ export default function QRScanner({ onScanSuccess, onScanError }) {
     if (detectedCodes && detectedCodes.length > 0) {
       try {
         const decodedText = detectedCodes[0].rawValue;
-        const data = JSON.parse(decodedText);
+        let data = decodedText;
+        try {
+          data = JSON.parse(decodedText);
+        } catch (e) {
+          // If not valid JSON, it's treated as a plain string (UID)
+        }
         onScanSuccess(data);
       } catch (e) {
-        console.error("Not valid JSON:", e);
-        if (onScanError) onScanError("Invalid QR format. Please scan a valid Socity QR code.");
+        console.error("Error processing scan:", e);
+        if (onScanError) onScanError("Error processing QR format.");
       }
     }
   };

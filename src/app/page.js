@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Image from "next/image";
+import { getUserByUID } from '@/models/users';
 
 // Import the scanner dynamically with SSR disabled
 const QRScanner = dynamic(() => import('@/components/QRScanner'), { 
@@ -38,13 +39,28 @@ export default function Home() {
     setIsCheckingSession(false);
   }, [router]);
 
-  const handleScanSuccess = (data) => {
-    // Valid data received: {id, society, pocket, flat_number, uid}
-    if (data.uid) {
-      localStorage.setItem('socity_user_session', JSON.stringify(data));
-      router.push('/dashboard');
-    } else {
-      setError("Invalid QR code. Missing unique identifier.");
+  const handleScanSuccess = async (data) => {
+    try {
+      // Extract UID whether data is a string or an object (backward compatibility)
+      const uid = typeof data === 'object' && data !== null ? data.uid : data;
+      
+      if (!uid || typeof uid !== 'string') {
+        setError("Invalid QR code. Missing or invalid unique identifier.");
+        return;
+      }
+
+      // Fetch user data from database using the UID
+      const userData = await getUserByUID(uid);
+
+      if (userData) {
+        localStorage.setItem('socity_user_session', JSON.stringify(userData));
+        router.push('/dashboard');
+      } else {
+        setError("User not found.");
+      }
+    } catch (err) {
+      console.error("Error fetching user data:", err);
+      setError("Failed to log in. Please try again later.");
     }
   };
 

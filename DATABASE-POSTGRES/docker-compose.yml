@@ -7,7 +7,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: socity
-      POSTGRES_PASSWORD: SocityPassword#123
+      POSTGRES_PASSWORD: SocityPassword123
       POSTGRES_DB: socity_db
     ports:
       - "5432:5432"
