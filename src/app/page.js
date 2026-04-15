@@ -1,65 +1,129 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import Image from "next/image";
 
+// Import the scanner dynamically with SSR disabled
+const QRScanner = dynamic(() => import('@/components/QRScanner'), { 
+  ssr: false,
+  loading: () => (
+    <div className="w-full max-w-sm h-64 mx-auto animate-pulse bg-zinc-200 dark:bg-zinc-800 rounded-xl flex items-center justify-center">
+      <p className="text-zinc-500">Loading Camera...</p>
+    </div>
+  )
+});
+
 export default function Home() {
+  const router = useRouter();
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    // Check for existing session in localStorage
+    const savedSession = localStorage.getItem('socity_user_session');
+    if (savedSession) {
+      try {
+        const userData = JSON.parse(savedSession);
+        if (userData && userData.uid) {
+          router.replace('/dashboard');
+          return; // Skip setting state to false as we're redirecting
+        }
+      } catch (e) {
+        console.error("Corrupted session data", e);
+        localStorage.removeItem('socity_user_session');
+      }
+    }
+    setIsCheckingSession(false);
+  }, [router]);
+
+  const handleScanSuccess = (data) => {
+    // Valid data received: {id, society, pocket, flat_number, uid}
+    if (data.uid) {
+      localStorage.setItem('socity_user_session', JSON.stringify(data));
+      router.push('/dashboard');
+    } else {
+      setError("Invalid QR code. Missing unique identifier.");
+    }
+  };
+
+  const handleScanError = (errMsg) => {
+    // Only set error state for significant issues, not routine "searching" noise
+    // but ALWAYS show it if it's a concrete error message
+    if (errMsg && (errMsg.includes("No MultiFormat Readers") || errMsg.includes("No QR code found"))) {
+      return;
+    }
+    setError(errMsg);
+    console.warn("QR Scan Error:", errMsg);
+  };
+
+  if (isCheckingSession) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black">
+        <div className="text-center animate-pulse">
+          <Image
+            className="dark:invert mx-auto mb-4"
+            src="/next.svg"
+            alt="Loading..."
+            width={80}
+            height={16}
+          />
+          <p className="text-zinc-500">Verifying session...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.js file.
+    <div className="flex flex-col min-h-screen bg-zinc-50 dark:bg-black font-sans">
+      <main className="flex flex-1 flex-col items-center justify-center px-6 py-12">
+        <div className="mb-12 text-center">
+          <Image
+            className="dark:invert mx-auto mb-8"
+            src="/next.svg"
+            alt="Socity Logo"
+            width={120}
+            height={24}
+            priority
+          />
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
+            Welcome to Socity
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-4 text-lg text-zinc-600 dark:text-zinc-400 max-w-sm mx-auto">
+            Scan your society QR code to login instantly.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="w-full max-w-sm space-y-6">
+          <QRScanner 
+            onScanSuccess={handleScanSuccess} 
+            onScanError={handleScanError} 
+          />
+
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm text-center">
+              {error}
+              <button 
+                onClick={() => setError(null)}
+                className="block mx-auto mt-2 font-semibold underline"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
+
+          <div className="pt-8 text-center border-t border-zinc-200 dark:border-zinc-800">
+            <p className="text-sm text-zinc-500">
+              Need help? Contact your society administrator.
+            </p>
+          </div>
         </div>
       </main>
+      
+      <footer className="py-6 text-center text-xs text-zinc-400">
+        &copy; 2026 Socity PWA. All rights reserved.
+      </footer>
     </div>
   );
 }
