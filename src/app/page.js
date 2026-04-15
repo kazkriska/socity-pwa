@@ -49,11 +49,6 @@ export default function Home() {
   };
 
   const handleScanError = (errMsg) => {
-    // Only set error state for significant issues, not routine "searching" noise
-    // but ALWAYS show it if it's a concrete error message
-    if (errMsg && (errMsg.includes("No MultiFormat Readers") || errMsg.includes("No QR code found"))) {
-      return;
-    }
     setError(errMsg);
     console.warn("QR Scan Error:", errMsg);
   };
