@@ -13,7 +13,7 @@ if (process.env.NODE_ENV === "production") {
     database: process.env.PG_DATABASE,
     password: process.env.PG_PASSWORD,
     port: Number(process.env.PG_PORT),
-    ssl: { rejectUnauthorized: false }, // Common requirement for production
+    ...(process.env.PG_SSL === "true" && { ssl: { rejectUnauthorized: false } }),
   });
 } else {
   // In development, use a global variable so the pool survives HMR
